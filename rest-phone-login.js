@@ -1,3 +1,12 @@
+// Enable cross origin requests for all endpoints
+JsonRoutes.setResponseHeaders({
+  "Cache-Control": "no-store",
+  "Pragma": "no-cache",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+});
+
 JsonRoutes.Middleware.use(JsonRoutes.Middleware.parseBearerToken);
 JsonRoutes.Middleware.use(JsonRoutes.Middleware.authenticateMeteorUserByToken);
 
@@ -18,8 +27,6 @@ JsonRoutes.add('options', '/users/login', function (req, res) {
 JsonRoutes.add('post', '/users/login', function (req, res) {
   
   var options = req.body;
-
-  console.log('phone: %s; password: %s', options.phone, options.password)
 
   var result = Accounts._loginWithPhoneAndEmail(options);
 
