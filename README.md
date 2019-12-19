@@ -79,3 +79,6 @@ Response:
   tokenExpires: date
 }
 ```
+
+## Cookie
+We may want to use cookie on the client to store login token to enable multi-site login.
