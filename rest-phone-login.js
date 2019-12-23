@@ -1,3 +1,5 @@
+
+
 // Enable cross origin requests for all endpoints
 JsonRoutes.setResponseHeaders({
   "Cache-Control": "no-store",
@@ -52,6 +54,56 @@ JsonRoutes.add('post', '/users/login', function (req, res) {
 
 });
 
+///
+/// Login with token
+///
+// If we have the right token, we don't really need to 'login' since
+// we can use this token to authenticate requests. The purpose of
+// this is basicly to create a new token (and retire the old one).
+JsonRoutes.add('options', '/users/tokenlogin', function (req, res) {
+  JsonRoutes.sendResult(res);
+});
+
+// Request body must be json object:
+// @property {string} token 
+JsonRoutes.add('post', '/users/tokenlogin', function (req, res) {
+  var options = req.body;
+
+  var user = _loginWithToken(options);
+  var data = _createLoginToken(user._id)
+
+  JsonRoutes.sendResult(res, { data });
+});
+
+function _loginWithToken(options) {
+  if (!options.token)
+      return undefined; // don't handle
+
+  check(options.token, String);
+
+  // get normalized user
+  var user = Meteor.users.findOne({
+    'services.resume.loginTokens.hashedToken': Accounts._hashLoginToken(options.token)
+  }, { 
+    fields: { servies: 0 }
+   });
+
+  // make sure password is provided
+  if (!user)
+      throw new Meteor.Error(403, "not.valid.token");
+
+  var updater = {};
+
+  // remove old login tokens
+  updater.$pull = {
+      'services.resume.loginTokens': {
+          when: { $lt: moment().subtract(1, 'days').toDate() }
+      }
+  };    
+  Meteor.users.update(user._id, updater);
+
+  return user;
+}
 
 //=====================================
 //             Register
@@ -82,45 +134,6 @@ JsonRoutes.add('post', '/users/register', function (req, res) {
     // Return the same things the login method returns
     JsonRoutes.sendResult(res, { data });
 });
-
-// JsonRoutes.add('post', '/users/register', function (req, res) {
-//   if(Accounts._options.forbidClientAccountCreation) {
-//     JsonRoutes.sendResult(res, {code: 403});
-//   } else {
-//     var options = req.body;
-
-//     check(options, {
-//       username: Match.Optional(String),
-//       email: Match.Optional(String),
-//       password: String,
-//     });
-
-//     var userId = Accounts.createUser(
-//       _.pick(options, 'username', 'email', 'password'));
-
-//     // Log in the new user and send back a token
-//     var stampedLoginToken = Accounts._generateStampedLoginToken();
-//     check(stampedLoginToken, {
-//       token: String,
-//       when: Date,
-//     });
-
-//     // This adds the token to the user
-//     Accounts._insertLoginToken(userId, stampedLoginToken);
-
-//     var tokenExpiration = Accounts._tokenExpiration(stampedLoginToken.when);
-//     check(tokenExpiration, Date);
-
-//     // Return the same things the login method returns
-//     JsonRoutes.sendResult(res, {
-//       data: {
-//         token: stampedLoginToken.token,
-//         tokenExpires: tokenExpiration,
-//         id: userId,
-//       },
-//     });
-//   }
-// });
 
 //=====================================
 //         Verification code
